@@ -1,9 +1,11 @@
 from itertools import combinations
 
+import numpy as np
 import pandas as pd
 from matplotlib import colors as mcolors, pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.lines import Line2D
+from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import matthews_corrcoef
@@ -175,3 +177,43 @@ class PCAClusteringDiagram:
 
             # for _ in self.plot_centroids_detail(pdf.savefig):
             #     pass
+
+
+class WorkloadSimilarityAnalyzer:
+
+    def __init__(self, filename):
+        self.data = pd.read_csv(filename, index_col=0)
+
+    def raw(self) -> pd.DataFrame:
+        return self.data
+
+    def pca(self, n_components=14) -> pd.DataFrame:
+        pca = PCA(n_components=n_components, copy=True)
+        pca.fit(self.data)
+        pca_data = pca.transform(self.data)
+        print(pca.explained_variance_ratio_)
+        pca_data = pd.DataFrame(pca_data)
+        pca_data.index = self.data.index
+
+        return pca_data
+
+    def cov(self) -> pd.DataFrame:
+        cov = np.cov(self.data)
+
+        cov_data = pd.DataFrame(cov)
+        cov_data.index = self.data.index
+
+        return cov_data
+
+    def get_matrix(self, data, algorithm="euclidean",
+                   rate=False) -> pd.DataFrame:
+        dist_raw = pdist(data, metric=algorithm)
+        dis_matrix = squareform(dist_raw)
+
+        df = pd.DataFrame(dis_matrix)
+        df.index = self.data.index
+        df.columns = self.data.index
+
+        if not rate:
+            return df
+        return 1 - df / df.values.max()
